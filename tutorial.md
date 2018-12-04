@@ -59,3 +59,74 @@
 - 访问 `http://localhost:5000/hello`
     !['flaskr_hello'](flaskr/static/images/flaskr_hello.png)
 
+## 定义和操作数据库
+- 使用 `SQLite3` 数据库存储用户和博客内容
+### 连接数据库
+- 服务端处理请求时，根据业务需求建立数据库连接，处理完成后关闭释放连接
+    ```
+        # flaskr/db.py
+        # 数据库处理
+        import sqlite3
+        import click
+        from flask import current_app, g
+
+        # 获取数据库连接
+        def get_db():
+            if 'db' not in g:
+                # 建立连接
+                g.db = sqlite3.connect(
+                    current_app.config['DATABASE'],
+                    detect_types=sqlite3.PARSE_DECLTYPES
+                )
+                # 返回一行数据的操作
+                g.db.row_factory = sqlite3.Row
+            # 返回数据库连接
+            return g.db
+        
+        # 释放数据库连接
+        def close_db(err):
+            db = g.pop('db', None)
+            if db is not None:
+                db.close()
+    ```
+- `current_app` 指向处理请求的当前应用
+- `sqlite3.connect()` 建立数据库连接，该连接指向配置中 `DATABASE` 指定的文件
+- `sqlite3.Row` 返回一个行对象，然后可以根据列名称操作数据
+### 创建表 - 使用 SQL
+- 创建两张表：`user` 表存储用户数据，`post` 表存储博客数据
+    ```
+        # flaskr/schema.sql
+        drop table user if exists;
+        drop table post if exists;
+
+        create table user(
+            id integer primary key autoincrement,
+            username text unique not null,
+            password text not null
+        );
+
+        create table post(
+            id integer primary key autoincrement,
+            author_id integer not null,
+            created timestamp not null default current_timestamp,
+            title text not null,
+            body text not null,
+            foreign key (author_id) references user (id)
+        );
+    ```
+- `click.command()` 定义一个 `init-db` 命令，调用 `init_db` 函数初始化数据库，并为用户显示一个成功的消息
+### 在应用中注册
+- `close_db` 和 `init_db_command` 函数需要在应用实例中注册
+- 定义 `init_app()` 函数，将应用当做参数，在函数中进行注册
+    ```
+        # flaskr/db.py
+        def init_app(app):
+            app.teardown_appcontext(close_db)
+            app.cli.add_command(init_db_command)
+    ```
+- `app.teardown_appcontext()` 告诉 `Flask` 在返回响应后进行清理时调用此函数
+- `app.cli.add_command()` 添加一个可以与 `flask` 一起工作的命令
+- 在创建应用函数中将 `db` 与 `app` 绑定
+    ```
+
+    ```

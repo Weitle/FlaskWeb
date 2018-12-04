@@ -26,5 +26,9 @@ def create_app(test_config=None):
     @app.route('/hello')
     def hello():
         return '<h1>Hello, World!</h1>'
+
+    from . import db
+    db.init_app(app)
+
     # 返回 Flask 应用实例
     return app
