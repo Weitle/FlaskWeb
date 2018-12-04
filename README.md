@@ -172,16 +172,16 @@
         @app.route('/')
         def index():
             if 'username' in session:
-                return 'Logged in as %s. <a href='/logout'>Logout</a>' % session['username']
-            return "You're not logged in."
+                return "Logged in as %s. <a href='/logout'>Logout</a>" % session['username']
+            return "You're not logged in. <a href='/login'>Login</a>"
         # 登录系统
         @app.route('/login', methods=['GET', 'POST'])
         def login():
             if request.method == 'POST':
                 session['username'] = request.form['username']
-                return redirect(url_for('login'))
+                return redirect(url_for('index'))
             return '''
-                <form method='POST'>
+                <form method='POST' action='/login'>
                     <p>
                         <input type='text' name='username'/>
                     </p>
@@ -201,5 +201,9 @@
 - 使用 `abort(errno)` 方法可以退出请求，并返回一个错误代码
 - 使用 `errorhandler()` 装饰器可以定制错误页面
 - 示例：
-
-
+    ```
+        # 错误处理函数
+        @app.errorhandler(404)
+        def notfound(err):
+            return render_template('404.html'), 404
+    ```
