@@ -207,3 +207,5 @@
         def notfound(err):
             return render_template('404.html'), 404
     ```
+
+    [下一章 教程](tutorial.md)
