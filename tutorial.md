@@ -114,7 +114,27 @@
             foreign key (author_id) references user (id)
         );
     ```
-- `click.command()` 定义一个 `init-db` 命令，调用 `init_db` 函数初始化数据库，并为用户显示一个成功的消息
+- 在数据库操作文件 `db.py` 文件中添加函数，用于执行 `SQL` 命令创建表
+    ```
+        # db.py
+        import click
+        from flask.cli import with_appcontext
+
+        def init_db():
+            db = get_db()
+            with current_app.open_resource('schema.sql') as f:
+                db.executescript(f.read().decode('utf8'))
+
+        @click.command('init-db')
+        @with_appcontext
+        def init_db_command():
+            """
+                Clear the exists data and create new tables.
+            """
+            init_db()
+            click.echo('Initialized the database.')
+    ```
+    - `click.command()` 定义一个 `init-db` 命令，调用 `init_db` 函数初始化数据库，并为用户显示一个成功的消息
 ### 在应用中注册
 - `close_db` 和 `init_db_command` 函数需要在应用实例中注册
 - 定义 `init_app()` 函数，将应用当做参数，在函数中进行注册
@@ -128,5 +148,13 @@
 - `app.cli.add_command()` 添加一个可以与 `flask` 一起工作的命令
 - 在创建应用函数中将 `db` 与 `app` 绑定
     ```
-
+        from . import db
+        db.init_app(app)
     ```
+### 初始化数据库文件
+- 执行 `flask init-db` 命令初始化数据库，在实例目录 `instance` 中生成的数据库文件 `flaskr.sqlite`
+
+
+    [上一章 Readme](README.md)
+
+    [下一章 蓝图](blueprint.md)

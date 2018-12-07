@@ -23,12 +23,18 @@ def create_app(test_config=None):
         pass
 
     # a simple page that say hello
-    @app.route('/hello')
-    def hello():
-        return '<h1>Hello, World!</h1>'
+    @app.route('/')
+    @app.route('/index')
+    def index():
+        return '<h1>Home Page</h1>'
 
+    # 注册数据库操作
     from . import db
     db.init_app(app)
+    # 注册蓝图
+    from . import auth
+    app.register_blueprint(auth.auth_blueprint)
+    #app.register_blueprint(auth.auth_blueprint, url_perfix='/auth')
 
     # 返回 Flask 应用实例
     return app
