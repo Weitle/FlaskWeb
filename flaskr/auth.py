@@ -102,3 +102,14 @@ def logout():
     session.clear()
     flash(u'成功退出系统!')
     return redirect(url_for('auth.login'))
+
+# 定义一个用户登录检测装饰器
+def login_required(view):
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        # 如果用户没有登录，重定向至登录页面
+        if g.user is None:
+            return redirect(url_for('auth.login'))
+        # 用户移动能力，执行原视图
+        return view(**kwargs)
+    return wrapped_view

@@ -300,4 +300,118 @@
             return redirect(url_for('auth.login'))
     ```
 ### 在其他视图中验证
-- 
+- 用户只有在登录系统后才能具备创建、编辑和删除博客的权限
+- 在每个视图中可以使用装饰器来完成这个工作
+    ```
+        flaskr/auth.py
+        # 定义一个用户登录检测装饰器
+        def login_required(view):
+            @functools.wraps(view)
+            def wrapped_view(**kwargs):
+                # 如果用户没有登录，重定向至登录页面
+                if g.user is None:
+                    return redirect(url_for('auth.login'))
+                # 用户移动能力，执行原视图
+                return view(**kwargs)
+            return wrapped_view
+    ```
+### 端点和 URL
+- `flask.url_for()` 函数会根据视图名称生成对应的 `URL`
+- 视图关联的名称称为端点，一般建议端点名称与视图函数名称一致
+- 使用蓝图时，蓝图名称会添加到函数名称前面，如 `auth.py` 模块中的 `login` 视图对应的端点为 `auth.login`
+
+## 模板
+- 模板是包含静态数据和动态数据占位符的文件，视图会将数据传送给模板文件，模板文件利用这些数据生成最终的 `HTML` 文档
+- `Flask` 使用 `Jinja` 模板
+- 模板文件默认存储在包内的 `templates()` 目录下，视图函数通过调用 `render_template()` 函数调用模板文件
+- 模板基本语法：
+    - 代码块使用分界符分割
+    - `{{` 和 `}}` 分界符之间会渲染其中的变量内容输出到最终文档
+    - `{%` 和 `%}` 分界符之间表示流程控制语句
+### 基础布局
+- 为整个应用定制一个基本布局模板，其它模板可以继承这个基本布局模板并重载响应的 `block`，达到重用的效果
+    ```
+        # flaskr/templates/base.html
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta http-equiv="X-UA-Compatible" content="ie=edge">
+            <title>{% block title %}{% endblock %} - Flaskr</title>
+            <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+        </head>
+        <body>
+        <nav>
+            <h1>Flaskr</h1>
+            <ul>
+                {% if g.user %}
+                    <li><span>{{ g.user['username'] }}</span></li>
+                    <li><a href="{{ url_for('auth.logout') }}">Log Out</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('auth.register' )}}">Register</a></li>
+                    <li><a href="{{ url_for('auth.login') }}">Log In</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        <section class="content">
+            <header>
+                {% block header%}
+                {% endblock %}
+            </header>
+            {% for message in get_flashed_messages() %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+            {% block content %}{% endblock %}
+        </section>
+        </body>
+        </html>
+    ```
+- 基础布局模板中定义了三个 `block`，可以被其它模板重载：
+    1. `{% block title %}`：显示在浏览器标签的标题
+    2. `{% block header %}`：显示页面标题
+    3. `{% block content %}`：显示每个页面的具体内容
+- 所有模板文件放在 `flaskr` 包下的 `templates` 目录下，属于某个蓝图的模板文件放在 `templates` 下与蓝图同名的目录下
+### 注册
+- 用于显示注册页面
+- 使用 `{% extends 'base.html' %}` 表明本模板基于基础布局模板
+    ```
+        # flaskr/templates/auth/register.html
+        {% extends 'base.html' %}
+
+        {% block header %}
+            <h1>{% block title %}Register{% endblock %}</h1>
+        {% endblock %}
+
+        {% block content %}
+            <form method="POST">
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username" required/>
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" required/>
+                <input type="submit" value="Register"/>
+            </form>
+        {% endblock %}
+    ```
+### 登录
+- 用于显示登录页面
+    ```
+        # flaskr/templates/auth/login.html
+        {% extends 'base.html' %}
+
+        {% block header %}
+            <h1>{% block title %}Log In{% endblock %}</h1>
+        {% endblock %}
+
+        {% block content %}
+            <form method="POST">
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username" required/>
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" required/>
+                <input type="submit" value="Log In"/>
+            </form>
+        {% endblock %}
+    ```
+## 静态文件
+- `Flask` 会自动添加一个 `static` 视图，使用相对于 `flaskr/static` 相对路径
