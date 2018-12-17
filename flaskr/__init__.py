@@ -31,10 +31,14 @@ def create_app(test_config=None):
     # 注册数据库操作
     from . import db
     db.init_app(app)
-    # 注册蓝图
+    # 注册认证蓝图
     from . import auth
-    app.register_blueprint(auth.auth_blueprint)
-    #app.register_blueprint(auth.auth_blueprint, url_perfix='/auth')
+    #app.register_blueprint(auth.auth_blueprint)
+    app.register_blueprint(auth.auth_blueprint, url_prefix='/auth')
+    # 注册博客蓝图，并将 `blog.index` 视图关联到 `/` 路由
+    from . import blog
+    app.register_blueprint(blog.bp)
+    app.add_url_rule('/', endpoint='index')
 
     # 返回 Flask 应用实例
     return app

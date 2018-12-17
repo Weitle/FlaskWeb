@@ -415,5 +415,35 @@
     ```
 ## 静态文件
 - `Flask` 会自动添加一个 `static` 视图，使用相对于 `flaskr/static` 相对路径。
-- `CSS` 文件、`js` 文件、图片等都可以放在 `static` 目录中。
-- 使用 `url_for('static', filename='...')` 来引用静态文件。 
+- `CSS` 文件、`js` 文件、图片等都可以放在 `static` 目录中
+- 使用 `url_for('static', filename='...')` 来引用静态文件
+## 博客蓝图
+ - 博客页面应该能够显示所有帖子，允许已登录用户创建帖子，允许帖子作者修改和删除帖子
+ ### 定义并注册蓝图
+ - 博客是 `Flaskr` 应用的主要功能，`blog` 蓝图不设置 `url_prefix`，但 `blog.py` 中的视图端点都会添加 `blog` 前缀
+ - 使用 `add_url_rule()` 方法关联端点 `index`（`blog.index`）与 `/` 路由，这样使用 `url_for('index')` 和 `url_for('blog.index')` 都会生成 `/` 路由
+    ```
+        # flaskr/blog.py
+        # 定义博客蓝图
+        from flask import Blueprint
+
+        bp = Blueprint('blog', __name__)
+    ```
+    ```
+        #flaskr/__init__.py
+        # 注册博客蓝图，并将 `blog.index` 视图关联到 `/` 路由
+        from . import blog
+        app.register_blueprint(blog.bp)
+        app.add_url_rule('/', endpoint='index')
+    ```
+### 索引
+- 博客的索引视图 `index` 用来显示所有帖子，并按照发表时间排序
+- 为了显示用户信息，使用联合查询
+
+
+
+### 创建
+
+### 更新
+
+### 删除
