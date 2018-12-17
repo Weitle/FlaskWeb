@@ -414,4 +414,6 @@
         {% endblock %}
     ```
 ## 静态文件
-- `Flask` 会自动添加一个 `static` 视图，使用相对于 `flaskr/static` 相对路径
+- `Flask` 会自动添加一个 `static` 视图，使用相对于 `flaskr/static` 相对路径。
+- `CSS` 文件、`js` 文件、图片等都可以放在 `static` 目录中。
+- 使用 `url_for('static', filename='...')` 来引用静态文件。 
