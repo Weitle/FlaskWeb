@@ -22,12 +22,6 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    # a simple page that say hello
-    @app.route('/')
-    @app.route('/index')
-    def index():
-        return '<h1>Home Page</h1>'
-
     # 注册数据库操作
     from . import db
     db.init_app(app)

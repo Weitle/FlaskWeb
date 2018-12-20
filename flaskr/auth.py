@@ -88,7 +88,7 @@ def login():
             session.clear()
             session['user_id'] = user['id']
             flash(u'登录成功！欢迎你，{}！'.format(user['username']))
-            return redirect('index')
+            return redirect(url_for('index'))
         flash(error)
     # GET 请求返回用户登录表单
     # POST 请求用户登录失败也返回登录表单

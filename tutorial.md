@@ -154,7 +154,6 @@
 ### 初始化数据库文件
 - 执行 `flask init-db` 命令初始化数据库，在实例目录 `instance` 中生成的数据库文件 `flaskr.sqlite`
 
-
 ## Blueprint and View
 - 视图 `view` 是应用对请求进行响应的函数，`flask` 通过路由匹配请求对应的处理视图，视图返回数据，`flask` 再把得到的数据作为响应返回请求端
 ### 创建蓝图
@@ -439,11 +438,162 @@
 ### 索引
 - 博客的索引视图 `index` 用来显示所有帖子，并按照发表时间排序
 - 为了显示用户信息，使用联合查询
-
-
-
+    ```
+        # flaskr/blog.py
+        from flaskr.db import get_db
+        from flask import render_template
+        @bp.route('/')
+        def index():
+            db = get_db()
+            posts = db.execute(
+                'select p.id, title, body, created, author_id, username'
+                ' from post p join user u on p.author_id = u.id'
+                ' order by created desc'
+            ).fetchall()
+            return render_template('blog/index.html', posts = posts)
+    ```
+- 通过数据库查询出所有帖子，然后使用查询结果渲染 `blog/index.html` 模板
+    ```
+        # flaskr/templates/blog/index.html
+        {% extends 'base.html' %}
+        {% block header %}
+            <h1>{% block title %}Posts{% endblock %}</h1>
+            {% if g.user %}
+                <a href="{{url_for('blog.create')}}" class="action">New</a>
+            {% endif %}
+        {% endblock %}
+        {% block content %}
+            {% for post in posts %}
+                <article class="post">
+                    <header>
+                        <div>
+                            <h1>{{ post['title'] }}</h1>
+                            <div class="about"> by {{ post['username'] }} on {{ post['created'].strftime('%Y-%m-%d') }}</div>
+                        </div>
+                        {% if g.user['id'] == post['author_id'] %}
+                            <a href="{{ url_for('blog.update', id=post['id']) }}" class="action">Edit</a>
+                        {% endif %}
+                    </header>
+                    <p class="body">{{ post['body'] }}</p>
+                </article>
+                {% if not loop.last %}
+                    <hr>
+                {%endif%}
+            {% endfor %}
+        {% endblock %}
+    ```
+- `blog.index` 页面会显示所有帖子信息，如果是登录用户，会添加一个创建帖子的 `New` 链接，如果登录用户是某条帖子的作者，在该条帖子后添加一个编辑 `Edit` 链接
 ### 创建
-
+- `create` 视图会渲染 `blog/create` 页面，显示一个表单，用于填写创建新的帖子的内容
+- 对 `create` 视图应用 `login_required` 装饰器，用户必须登录后才能访问 `create` 视图，否则重定向至登录页面
+    ```
+        # flaskr/blog.py
+        from .auth import login_required
+        from flask import require, flash, url_for, redirect
+        @bp.route('/create', methods=['GET', 'POST'])
+        @login_required
+        def create():
+            if request.method == 'POST':
+                title = request.form['title'].strip()
+                body = request.form['body'].strip()
+                error = None
+                if not title:
+                    error = 'Title is required.'
+                if error is not None:
+                    flash(error)
+                else:
+                    db = get_db()
+                    db.execute("insert into post(title, body, author_id) values (?, ?, ?)", (title, body, g.user['id']))
+                    db.commit()
+                return redirect(url_for('blog.index'))
+            return render_template('blog/create.html')
+    ```
+    ```
+        # flaskr/templates/blog/create.html
+        {% extends 'base.html' %}
+        {% block header %}
+            <h1>{% block title%}New Post{% endblock %}</h1>
+        {% endblock %}
+        {% block content %}
+            <form action="{{url_for('blog.create')}}" method="post">
+                <label for="title">Title</label>
+                <input type="text" name="title" id="title" required>
+                <label for="body">Body</label>
+                <textarea name="body" id="body"></textarea>
+                <input type="submit" value="Save"/>
+            </form>
+        {% endblock %}
+    ```
 ### 更新
+- 更新和删除都需要通过给定的 `id` 获取 `post`，并且验证登录用户是否是获取到的帖子的作者（是否具有更新和删除的权限）
+- 定义一个 `get_post` 函数，用于实现获取 `post` 并验证用户的功能
+    ```
+        # flaskr/blog.py
+        from flask import g, abort
+        def get_post(id, check_author=True):
+            db = get_db()
+            post = db.execute("select p.id, title, body, created, author_id, username from post p join user u on p.author_id = u.id where p.id = ?", (id,)).fetchone()
+            if post is None:
+                abort(404, "Post id {0} doesn't exist.".format(id))
+            # 检查登录用户是否有修改该帖子的权限
+            if check_author and post['author_id'] != g.user['id']:
+                abort(403)
+            return post
+    ```
+- `blog.update` 视图接收一个 `id` 参数用于指定 `post.id`，该视图关联的路由格式为 `/<int:id>/update`，调用 `url_for` 生成 `URL` 时采用这样的方式：`url_for('blog.update', id=post['id'])`
+    ```
+        # flaskr/blog.py
 
+        @bp.route('/<int:id>/update', methods=['GET', 'POST'])
+        @login_required
+        def update(id):
+            # 根据给定的 id 获取相应的 post
+            post = get_post(id)
+            if request.method == 'POST':
+                title = request.form['title'].strip()
+                body = request.form['body'].strip()
+                error = None
+                if not title:
+                    error = 'Title is required.'
+                if error is not None:
+                    flash(error)
+                else:
+                    db = get_db()
+                    db.execute('update post set title = ?, body = ? where id = ?', (title, body, id))
+                    db.commit()
+                    return redirect(url_for('blog.index'))
+            return render_template('blog/update.html', post=post)
+    ```
+    ```
+        # flaskr/templates/blog/update.html
+        {% extends 'base.html' %}
+        {% block header %}
+            <h1>{% block title%}Edit "{{post['title']}}"{% endblock %}</h1>
+        {% endblock %}
+        {% block content %}
+            <form action="{{url_for('blog.update', id=post['id'])}}" method="post">
+                <label for="title">Title</label>
+                <input type="text" name="title" id="title" value="{{ request.form['title'] or post['title']}}" required>
+                <label for="body">Body</label>
+                <textarea name="body" id="body">{{ request.form['body'] or post['body'] }}</textarea>
+                <input type="submit" value="Save"/>
+            </form>
+            <hr/>
+            <form action="{{ url_for('blog.delete', id=post['id'] )}}" method="POST">
+                <input type="submit" class="danger" value="Delete" onclick="return confirm('Are you sure?');"/>
+            </form>
+        {% endblock %}
+    ```
 ### 删除
+- 应用程序没有为 `delete` 视图提供模板，而是在 `blog/update` 模板中添加了一个 `delete` 链接按钮，指向 `/<int:id>/delete` 路由
+    ```
+        # flaskr/blog.py
+        @bp.route('/<int:id>/delete', methods=('POST',))
+        @login_required
+        def delete(id):
+            get_post(id)
+            db = get_db()
+            db.execute('delete from post where id = ?', (id,))
+            db.commit()
+            return redirect(url_for('blog.index'))
+    ```
